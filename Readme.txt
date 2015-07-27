@@ -1,4 +1,6 @@
-These scripts are all OSX bash utilizing the command line for much more point and click intense tasks.
+These scripts are all OSX bash utilizing the command line for administration over ssh.
 
-Most noteably softwareupdate, Flash, macports, and Java all in the background.
-~IWJ
+Most noteably softwareupdate, Flash, MacPorts, and Java all update in the background.
+
+
+~Pog Jing
