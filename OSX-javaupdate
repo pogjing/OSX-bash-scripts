@@ -1,0 +1,92 @@
+#!/bin/bash
+# Script is for updating Java on OSX
+# Written on 6/23/15 ~IWJ
+
+### Variables ( (///)___(///) )
+tmpdir="/tmp"
+
+# Latest available version
+latest=$( curl -s4 https://www.java.com/applet/JreCurrentVersion2.txt|tr -cd '[:digit:]' )
+
+x=$(echo "${latest}"|cut -c2)
+#echo $x
+
+y=$(echo "${latest}"|cut -c4-5)
+#echo $y
+
+z="${x}u${y}"
+#echo $z
+
+# the backtick issued here to not only remove the trailing newlines, but also squeeze any consecutive whitespaces
+#build=`curl -s http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html |grep jdk-${z}-macosx-x64.dmg| cut -d - -f 9|cut -d / -f 1`
+build=$(curl -s http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html |grep jdk-${z}-macosx-x64.dmg| cut -d - -f 9|cut -d / -f 1)
+#echo $build
+
+zb="${z}-${build}"
+#echo $zb
+
+
+### Functions ^('_')\-
+# Are we running on Intel?
+intelchk () {
+        case "$OSTYPE" in
+        darwin*)
+                /bin/echo "Intel OSX Detected..."
+                ;;
+        *)
+                /bin/echo "ERROR: This script is for Intel Macs only."
+                exit 1
+                ;;
+        esac
+}
+
+# Check if root user.
+rootchk () {
+        if [ "$(id -u)" -ne 0 ]; then
+                echo "Root is needed to run this script."
+                exit 1
+        fi
+}
+# Find current version
+curr () {
+if [ -e "/Library/Application Support/Oracle/Java/Info.plist" ]; then
+        instver=$( /usr/bin/defaults read /Library/Application\ Support/Oracle/Java/Info.plist SUFeedURL |tr -cd '[:digit:]' )
+        echo "installed java version: $instver"
+else
+        instver="0"
+        echo "no java installed, yet..."
+fi
+}
+
+
+### Main @xxxx[{::::::::::::::::::::::::::::::::::> 
+intelchk
+rootchk
+echo "latest java version: $latest"
+curr
+if [ "${instver}" -lt "${latest}" ]; then
+	echo "downloading latest version..."
+#the following command was found here: https://stackoverflow.com/questions/10268583/how-to-automate-download-and-installation-of-java-jdk-on-linux
+	curl --progress-bar -j -k -L -H "Cookie: oraclelicense=accept-securebackup-cookie" http://download.oracle.com/otn-pub/java/jdk/${zb}/jdk-${z}-macosx-x64.dmg > $tmpdir/jdk${z}.dmg
+	echo "Mounting installer disk images."
+	hdiutil attach "$tmpdir/jdk${z}.dmg" -nobrowse -quiet
+        echo "Installing..."
+	# /Volumes/JDK\ 8\ Update\ 45/JDK\ 8\ Update\ 45.pkg
+        installer -pkg "/Volumes/JDK ${x} Update ${y}/JDK ${x} Update ${y}.pkg" -target /
+        echo "Unmounting installer disk image."
+        hdiutil detach "$(/bin/df | /usr/bin/grep "JDK" | awk '{print $1}')" -quiet
+        echo "Deleting disk image."
+        rm "$tmpdir/jdk${z}.dmg"
+        newlyinstalledver=$( /usr/bin/defaults read /Library/Application\ Support/Oracle/Java/Info.plist SUFeedURL |tr -cd '[:digit:]' )
+        if [ "${latest}" = "${newlyinstalledver}" ]; then
+                echo "$(date): SUCCESS: Java has been updated to version $newlyinstalledver"
+		exit 0
+        else
+                echo "$(date): ERROR: Java update unsuccessful, version remains at $instver"
+                exit 1
+        fi
+
+else
+	echo "up to date"
+	exit 0
+fi

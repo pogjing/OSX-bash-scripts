@@ -1,0 +1,59 @@
+#!/bin/bash
+
+# A script for updating OSX, using hot new grep options.
+# Finds Safari and kills it, if it is in the update list.
+# Also warns of reboot if needed.
+# Created on or about 2015.07.15 by ~IWJ
+
+ARR="$(softwareupdate -l|grep -E '[S]afari|[r]estart')"
+SAF=$($ARR|grep -o '[S]afari')
+REB=$($ARR|grep -o '[r]estart')
+
+### Functions
+# Are we running on Intel?
+intelchk () {
+        case "$OSTYPE" in
+        darwin*)
+                /bin/echo "Intel OSX Detected..."
+                ;;
+        *)
+                /bin/echo "ERROR: This script is for Intel Macs only."
+                exit 1
+                ;;
+        esac
+}
+
+# Check if root user.
+rootchk () {
+        if [ "$(id -u)" -ne 0 ] ; then
+                echo "Root is needed to run this script."
+                exit 1
+        fi
+}
+safarichk () {
+if [[ "Safari" == "$SAF" ]] ; then
+	pkill Safari
+	echo "Safari killed for update..."
+	# the above basically does this: ps -ef|grep [S]afari|cut -d' ' -f2
+fi
+}
+sftwrrbtchk () {
+if [[ "restart" == "$REB" ]] ; then
+	echo "A Restart Will be required after this update."
+fi
+}
+sftwrupd () {
+softwareupdate -iav
+if [ $? = 0 ] ; then
+	echo "Update completed."
+else
+	echo "Update failed."
+fi
+}
+
+##### Main
+intelchk
+rootchk
+safarichk
+sftwrrbtchk
+sftwrupd

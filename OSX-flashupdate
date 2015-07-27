@@ -1,0 +1,80 @@
+#!/bin/sh
+# Script to download and install/update Adobe Flash Player.
+# Only works on Intel systems and as root user.
+# Originally from a google found script (possibly github) but modified to work (the copy I recieved did not work).
+# Continually modifed to keep working and simplify in a few ways as I learned more.
+# May still use some "Bones" from the original script and I do not recall the original author.
+# Very big thank you to original author for the ideas.
+# Working as of 2015.07.27 ~IWJ
+
+
+dmgfile="flash.dmg"
+volname="Flash"
+logfile="/Library/Logs/FlashUpdateScript.log"
+tmpdir="/tmp"
+
+# Are we running on Intel?
+intelchk () {
+        case "$OSTYPE" in
+        darwin*)
+                /bin/echo "Intel OSX Detected..."
+                ;;
+        *)
+                /bin/echo "ERROR: This script is for Intel Macs only."
+                exit 1
+                ;;
+        esac
+}
+
+# Check if root user.
+rootchk () {
+        if [ "$(id -u)" -ne 0 ]; then
+                echo "Root is needed to run this script."
+                exit 1
+        fi
+}
+# Find current version
+curr () {
+if [ -e "/Library/Internet Plug-Ins/Flash Player.plugin" ]; then
+        currentinstalledver="$(defaults read /Library/Internet\ Plug-Ins/Flash\ Player.plugin/Contents/version CFBundleShortVersionString)"
+else
+        currentinstalledver="none"
+fi
+}
+
+
+intelchk
+rootchk
+# Get the latest version of Flash Player available from Adobe's About Flash page.
+latestver=`/usr/bin/curl -s http://www.adobe.com/software/flash/about/ | sed -n '/Safari/,/<\/tr/s/[^>]*>\([0-9].*\)<.*/\1/p'`
+# Get the version number of the currently-installed Flash Player, if any.
+curr
+echo "Current installed Flash: $currentinstalledver"
+echo "Latest flash: $latestver"
+# Compare the two versions, if they are different or Flash is not present then download and install the new version.
+if [ "${currentinstalledver}" != "${latestver}" ]; then
+	/bin/echo "`date`: Current Flash version: ${currentinstalledver}" >> ${logfile}
+	/bin/echo "`date`: Available Flash version: ${latestver}" >> ${logfile}
+	/bin/echo "`date`: Downloading newer version." >> ${logfile}
+	#/usr/bin/curl -s -o `/usr/bin/dirname $0`/flash.dmg http://fpdownload.macromedia.com/get/flashplayer/current/install_flash_player_osx_intel.dmg
+	/usr/bin/curl -s -o $tmpdir/flash.dmg http://fpdownload.adobe.com/get/flashplayer/pdc/$latestver/install_flash_player_osx.dmg
+	/bin/echo "`date`: Mounting installer disk image." >> ${logfile}
+	/usr/bin/hdiutil attach $tmpdir/flash.dmg -nobrowse -quiet
+	/bin/echo "`date`: Installing..." >> ${logfile}
+	/usr/sbin/installer -pkg /Volumes/Flash\ Player/Install\ Adobe\ Flash\ Player.app/Contents/Resources/Adobe\ Flash\ Player.pkg -target /
+	/bin/echo "`date`: Unmounting installer disk image." >> ${logfile}
+	/usr/bin/hdiutil detach $(/bin/df | /usr/bin/grep ${volname} | awk '{print $1}') -quiet
+	/bin/echo "`date`: Deleting disk image." >> ${logfile}
+	/bin/rm $tmpdir/${dmgfile}
+	newlyinstalledver=`/usr/bin/defaults read /Library/Internet\ Plug-Ins/Flash\ Player.plugin/Contents/version CFBundleShortVersionString`
+        if [ "${latestver}" = "${newlyinstalledver}" ]; then
+            /bin/echo "`date`: SUCCESS: Flash has been updated to version $newlyinstalledver" >> ${logfile}
+        else
+            /bin/echo "`date`: ERROR: Flash update unsuccessful, version remains at $currentinstalledver" >> ${logfile}
+            /bin/echo "--" >> ${logfile}
+	fi
+# If Flash is up to date already, just log it and exit.       
+else
+	/bin/echo "`date`: Flash is already up to date, running $currentinstalledver" >> ${logfile}
+        /bin/echo "--" >> ${logfile}
+fi

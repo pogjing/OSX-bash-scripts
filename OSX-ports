@@ -1,0 +1,7 @@
+#!/bin/bash
+# OSX macports update and upkeep to keep it light and clean.
+# Currently setup for use behind a firewall that will not allow
+# the normal port sync command through.
+# ~IWJ
+
+/opt/local/bin/port -dv sync && /opt/local/bin/port upgrade active && /opt/local/bin/port uninstall inactive && /opt/local/bin/port uninstall leaves

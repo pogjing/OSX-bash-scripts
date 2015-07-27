@@ -1,0 +1,20 @@
+#!/bin/bash
+# Checks used memory on OSX in a more linux way.
+# ~IWJ
+
+if [[ $OSTYPE == "darwin13" ]]; then
+	used=$(top -l 1 | head -n 10 | grep PhysMem: | cut -d" " -f2 | sed 's/G*$//')
+	free=$(top -l 1 | head -n 10 | grep PhysMem: | cut -d" " -f6 | sed 's/M*$//')
+	amnt=$(awk -v num="$free" 'BEGIN { printf "%.1f\n", (num / 1000) }')
+	total=$(awk -v num="$used" -v free="$amnt" 'BEGIN { printf "%.1f\n", (num + free) }')
+
+elif [[ $OSTYPE == "darwin12" ]]; then
+	usedmem=$(top -l 1 | head -n 10 | grep PhysMem: | cut -d" " -f2 | sed 's/M*$//')
+	used=$(awk -v num="$usedmem" 'BEGIN { printf "%.1f\n", (num / 1000) }')
+	free=$(top -l 1 | head -n 10 | grep PhysMem: | cut -d" " -f10 | sed 's/G*$//' | sed 's/M*$//')
+	total=$(awk -v num="$used" -v free="$free" 'BEGIN { printf "%.1f\n", (num + free) }')
+fi
+
+echo "Used Mem: $used G"
+echo "   Free Mem: $amnt G"
+echo "      Total Mem: $total G"

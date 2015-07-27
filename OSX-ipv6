@@ -1,0 +1,39 @@
+#!/bin/bash
+# Simple program for adding IPv6 to OSX from terminal using the manual mnethod.
+# You must change the ip addresses below on lines 27 (ipv4) and 34 (ipv6).
+# ~IWJ
+
+# Are we running on Intel?
+intelchk () {
+        case "$OSTYPE" in
+        darwin*)
+                /bin/echo "Intel OSX Detected..."
+                ;;
+        *)
+                /bin/echo "ERROR: This script is for Intel Macs only."
+                exit 1
+                ;;
+        esac
+}
+
+# Check if root user.
+rootchk () {
+        if [ "$(id -u)" -ne 0 ]; then
+                echo "Root is needed to run this script."
+                exit 1
+        fi
+}
+
+IP=$(networksetup -getinfo "Ethernet 1"|grep "IP address: 192.168.1"|cut -d. -f4|tr -cd '[:digit:]')
+IPv6=$(networksetup -getinfo "Ethernet 1"|grep "IPv6 IP"|cut -d' ' -f4)
+
+### MAIN ###
+intelchk
+rootchk
+if [[ "none" == "$IPv6" ]] ; then
+	networksetup -setv6manual "Ethernet 1" 2001:03d0:2328:0001::"$IP" 64 2001:04d0:2418:0142::1
+	IPv6=$(networksetup -getinfo "Ethernet 1"|grep "IPv6 IP")
+	echo "$IPv6"
+else
+	echo "Appears to be using IPv6 already $IPv6"
+fi

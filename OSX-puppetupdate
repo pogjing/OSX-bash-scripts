@@ -1,0 +1,80 @@
+#!/bin/bash
+# Script to download and install Facter, Hiera, and Puppet.
+# Only works on Intel systems as the root user.
+# This is a heavily modified version of the OSX-flashupdate script.
+# Created on June 16, 2015 by ~IWJ
+
+
+# Variables
+tmpdir="/tmp"
+
+### Functions
+# Are we running on Intel?
+intelchk () {
+	case "$OSTYPE" in
+	darwin*)
+		/bin/echo "Intel OSX Detected."
+		;;
+	*)
+        	/bin/echo "ERROR: This script is for Intel Macs only."
+		exit 1
+		;;
+	esac
+}
+
+# Check if root user.
+rootchk () {
+	if [ "$(id -u)" -ne 0 ]; then
+		echo "Root is needed to run this script."
+		exit 1
+	fi
+}
+
+#debug () {
+#read -p "Any Key to GO"
+#}
+
+##### MAIN 
+intelchk
+rootchk
+PRGM="facter hiera puppet"
+for program in $PRGM
+do
+	echo "O-('.'Q)"
+	printf "Examining \e[0;32m%s\e[0m...\n" "$program"
+        DMGFILE="$program.dmg"
+        VOLNAME="$program"
+	# These variables grab the latest version number by grepping the line number above the *-latest download on the OSX puppet download page.
+	linenum="$(curl -s http://downloads.puppetlabs.com/mac/|grep -n "$program"-latest|grep -Eo '^[^:]+')"
+	n=$((linenum-1))
+	latestver="$(curl -s http://downloads.puppetlabs.com/mac/|grep -n "$program"|cut -d - -f 1,2|grep $n |cut -d - -f 2|cut -d . -f 1-3)"
+	if [ -e "/usr/bin/$program" ]; then
+		currentinstalledver="$(/usr/bin/"$program" --version)"
+	else
+		currentinstalledver="none"
+	fi
+	echo "Installed $program version: $currentinstalledver"
+	echo "Latest $program available: $latestver"
+        if [ "${currentinstalledver}" != "${latestver}" ]; then
+		echo "$(date): Downloading newer version."
+		curl -s -o "$tmpdir/$DMGFILE" http://downloads.puppetlabs.com/mac/"$program"-latest.dmg
+		echo "Mounting installer disk images."
+		hdiutil attach "$tmpdir/$DMGFILE" -nobrowse -quiet
+		echo "Installing..."
+		installer -pkg "/Volumes/${program}-${latestver}/${program}-${latestver}.pkg" -target /
+		echo "Unmounting installer disk image."
+		hdiutil detach "$(/bin/df | /usr/bin/grep "${VOLNAME}" | awk '{print $1}')" -quiet
+		echo "Deleting disk image."
+		rm "$tmpdir/${DMGFILE}"
+		newlyinstalledver="$(/usr/bin/"$program" --version)"
+		if [ "${latestver}" = "${newlyinstalledver}" ]; then
+			echo "$(date): SUCCESS: $program has been updated to version $newlyinstalledver"
+		else
+			echo "$(date): ERROR: $program update unsuccessful, version remains at $currentinstalledver"
+			exit 1
+		fi
+	else
+		echo "(>'.')>"
+		printf ">>>>>>>>>>>> \e[0;32m%s\e[0m is already up to date.\n" "$program"
+	fi
+done

@@ -1,0 +1,30 @@
+#!/bin/bash
+# Quick script to "purge" memory to potentially avoid a "out of memory" related reboot.
+# ~IWJ
+
+# Are we running on Intel?
+intelchk () {
+        case "$OSTYPE" in
+        darwin*)
+                /bin/echo "Intel OSX Detected..."
+                ;;
+        *)
+                /bin/echo "ERROR: This script is for Intel Macs only."
+                exit 1
+                ;;
+        esac
+}
+
+# Check if root user.
+rootchk () {
+        if [ "$(id -u)" -ne 0 ]; then
+                echo "Root is needed to run this script."
+                exit 1
+        fi
+}
+
+### MAIN ###
+intelchk
+rootchk
+#command will free up inactive (blue) memory by clearing system cache
+purge
